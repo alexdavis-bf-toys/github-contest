@@ -1,0 +1,1 @@
+cat data.txt | awk -F":" '{ print $2":"$1 }' | sort -n -t : > data_normalized.txt

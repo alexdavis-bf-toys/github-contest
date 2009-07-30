@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2006-2007 Benjamin C. Meyer (ben at meyerhome dot net)
+ * Copyright (c) 2006-2009 Benjamin C. Meyer (ben at meyerhome dot net)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -71,7 +71,7 @@ void Test::cleanup()
 void Test::dataBase()
 {
     DataBase db;
-    QCOMPARE(db.rootPath(), QLatin1String("../../"));
+    QCOMPARE(db.rootPath(), QLatin1String("../"));
     QCOMPARE(db.isLoaded(), false);
     QVERIFY(db.totalVotes() == 0);
     QCOMPARE(db.load(), true);
@@ -100,58 +100,42 @@ void Test::movie_data()
     QTest::addColumn<int>("score");
     // Check what should be the first vote in the file and basic validation
     QTest::newRow("movie 1, first row")
-    << 1 << 547
-    << 1488844 << 3;
+    << 1 << 1
+    << 1 << 5;
 
-    QTest::newRow("movie 1, first row sorted")
-    << 1 << 547
-    << 915 << 5;
+    QTest::newRow("movie 2, first row sorted")
+    << 2 << 4
+    << 19813 << 5;
 
-    QTest::newRow("movie 1, second row")
-    << 1 << 547
-    << 822109 << 5;
+    QTest::newRow("movie 2, second row")
+    << 2 << 4
+    << 2 << 5;
 
-    QTest::newRow("movie 1, last row in movie file")
-    << 1 << 547
-    << 1815755 << 5;
+    QTest::newRow("movie 2, last row in movie file")
+    << 2 << 4
+    << 3944 << 5;
 
-    QTest::newRow("movie 1, last row sorted")
-    << 1 << 547
-    << 2647871 << 4;
+    QTest::newRow("movie 2, last row sorted")
+    << 2 << 4
+    << 9539 << 5;
 
-    QTest::newRow("movie 2, first row")
-    << 2 << 145
-    << 2059652 << 4;
-
-    QTest::newRow("movie 2, last row")
-    << 2 << 145
-    << 1272122 << 5;
+    QTest::newRow("movie 3, first row")
+    << 3 << 234
+    << 988 << 5;
 
     // findVote if not returning a offseted value will be beyond the size of the file
     QTest::newRow("movie 10001, user 27822")
-    << 10001 << 158
-    << 27822 << 5;
+    << 17425 << 1
+    << 6699 << 5;
 
     // Last row isn't written correctly to the file
     QTest::newRow("movie 17769, first row")
-    << 17769 << 6749
-    << 1844276 << 1;
+    << 123343 << 1
+    << 554 << 5;
 
     QTest::newRow("movie 17770, first row")
-    << 17770 << 921
-    << 2031561 << 2;
-
-    QTest::newRow("movie 17770, last row")
-    << 17770 << 921
-    << 453585 << 2;
-
-    QTest::newRow("movie 17770, last row sorted")
-    << 17770 << 921
-    << 2647066 << 2;
-
-    QTest::newRow("movie 2843, first row sorted")
-    << 2843 << 1455
-    << 6 << 1;
+    << 123344 << 1
+    << 43642 << 5;
 }
 
 void Test::movie()
@@ -221,11 +205,11 @@ void Test::user_data()
     QTest::addColumn<int>("user");
     QTest::addColumn<int>("id");
 
-    QTest::newRow("invalid") << 1 << -1;
-    QTest::newRow("first valid") << 6 << 6;
-    QTest::newRow("second valid") << 7 << 7;
-    QTest::newRow("middle one") << 822109 << 822109;
-    QTest::newRow("last user") << 2649429 << 2649429;
+    QTest::newRow("invalid") << 0 << -1;
+    QTest::newRow("first valid") << 1 << 1;
+    QTest::newRow("second valid") << 2 << 2;
+    QTest::newRow("middle one") << 1435 << 1435;
+    QTest::newRow("last user") << 56554 << 56554;
 }
 
 void Test::user()
@@ -265,10 +249,10 @@ void Test::userNext_data()
     QTest::addColumn<int>("start");
     QTest::addColumn<int>("next");
 
-    QTest::newRow("default user") << 0 << 7;
-    QTest::newRow("first user")   << 6 << 7;
-    QTest::newRow("first skip")   << 8 << 10;
-    QTest::newRow("middle user")  << 508 << 515;
+    QTest::newRow("default user") << 0 << 2;
+    QTest::newRow("first user")   << 1 << 2;
+    QTest::newRow("first skip")   << 8 << 9;
+    QTest::newRow("middle user")  << 508 << 509;
 }
 
 void Test::userNext()
@@ -280,7 +264,7 @@ void Test::userNext()
     QVERIFY(db.load());
     User user(&db, start);
     user.next();
-    QCOMPARE(next, user.id());
+    QCOMPARE(user.id(), next);
 }
 
 void Test::quickdatabase()

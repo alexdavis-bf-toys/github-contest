@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2007 Benjamin C. Meyer (ben at meyerhome dot net)
+ * Copyright (C) 2007-2009 Benjamin C. Meyer (ben at meyerhome dot net)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,10 +51,10 @@
 #include <probe.h>
 #include <user.h>
 
-#define MAX_RATINGS     100480508     // Ratings in entire training set (+1)
-#define MAX_CUSTOMERS   480190        // Customers in the entire training set (+1)
-#define MAX_MOVIES      17771         // Movies in the entire training set (+1)
-#define MAX_FEATURES    64             // Number of features to use
+#define MAX_RATINGS     440237        // Ratings in entire training set (+1)
+#define MAX_CUSTOMERS   56554         // Customers in the entire training set (+1)
+#define MAX_MOVIES      123345        // Movies in the entire training set (+1)
+#define MAX_FEATURES    64            // Number of features to use
 #define MIN_EPOCHS      120           // Minimum number of epochs per feature
 #define MAX_EPOCHS      200           // Max epochs per feature
 
@@ -113,6 +113,7 @@ void Svd::calculateFeatures()
     double err, p, sq, rmse_last, rmse = 2.0;
     float cf, mf;
 
+    printf("--Total Users: %d", currentMovie.dataBase()->totalUsers());
     for (int f = 0; f < 5 && f < MAX_FEATURES; ++f) {
         printf("\n--- Calculating feature: %d ---\n", f);
         // Keep looping until you have passed a minimum number
@@ -124,7 +125,7 @@ void Svd::calculateFeatures()
             sq = 0;
             rmse_last = rmse;
             int cacheId = 0;
-            user.setId(6);
+            user.setId(1);
             for (int i = 0; i < totalUsers; ++i) {
                 int custId = currentMovie.dataBase()->mapUser(user.id());
                 for (int v = 0; v < user.votes(); ++v) {
@@ -205,6 +206,16 @@ double Svd::determine(int user)
     return sum;
 }
 
+class RowAndCount {
+public:
+    RowAndCount(int r, double c) : row(r), count(c) {}
+    int row;
+    double count;
+    inline bool operator <(const RowAndCount &other) const
+        { return count > other.count; }
+};
+#include <qstringlist.h>
+
 int main(int argc, char **argv)
 {
     Q_UNUSED(argc);
@@ -212,11 +223,55 @@ int main(int argc, char **argv)
 
     DataBase db;
     db.load();
-    Probe probe(&db);
+
+    QFile file("../../download/test.txt");
+    if (!file.open(QFile::ReadOnly)) {
+        qWarning() << "Unable to open test file";
+        return 1;
+    }
+
+    //Probe probe(&db);
 
     Svd *svd = new Svd(&db);
     svd->calculateFeatures();
-    int r = probe.runProbe(svd, "qualifying");
+
+    QFile result("../../results.txt");
+    if (!result.open(QFile::WriteOnly)) {
+        qWarning() << "can't write";
+        return 1;
+    }
+    QTextStream out(&result);
+    QTextStream stream(&file);
+    while (!stream.atEnd()) {
+        QString line = stream.readLine();
+        int userid = line.toInt();
+        User user(&db, userid);
+
+        QList<RowAndCount> list;
+        for (int i = 0; i < db.totalMovies(); ++i) {
+            //Movie movie(&db, i);
+            svd->setMovie(i);
+            double guess = 1.0;
+            if (/*movie.findVote(userid) != -1) {//*/user.seenMovie(i) == -1) {
+                guess = svd->determine(userid);
+                //qDebug() << userid << i << guess;
+            }
+            list.append(RowAndCount(i, guess));
+        }
+        qSort(list);
+        list = list.mid(0, 10);
+        QStringList top10;
+        foreach(RowAndCount rowAndCount, list) {
+            int sourceRow = rowAndCount.row;
+            top10.append(QString("%1").arg(sourceRow));
+            Q_ASSERT(rowAndCount.count >= 1 && rowAndCount.count <= 5);
+            //qDebug() << rowAndCount.count;
+        }
+
+        out << /*list[0].count << ":" <<*/ userid << ":" << top10.join(",") << endl;
+    }
+
+    int r = 0;//probe.runProbe(svd, "qualifying");
     delete svd;
     return r;
 }

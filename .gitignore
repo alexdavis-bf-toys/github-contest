@@ -1,0 +1,11 @@
+*.swp
+*.moc
+*.o
+ui_*
+Makefile
+
+bin/
+movies.index
+movies.data
+users.index
+users.data

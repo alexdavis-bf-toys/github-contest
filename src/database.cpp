@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2006-2007 Benjamin C. Meyer (ben at meyerhome dot net)
+ * Copyright (C) 2006-2009 Benjamin C. Meyer (ben at meyerhome dot net)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,7 +59,7 @@ DataBase::DataBase(const QString &rootPath) :
     if (m_rootPath.isEmpty()) {
         QDir dir = QDir::current();
         while (!dir.isRoot()) {
-            if (dir.entryList(QStringList(), QDir::AllDirs).contains("training_set")) {
+            if (dir.entryList(QStringList(), QDir::AllDirs).contains("download")) {
                 m_rootPath = QDir::current().relativeFilePath(dir.path());
                 break;
             }
@@ -114,50 +114,59 @@ void DataBase::generateMovieDatabase()
     qDebug() << "Generating movie database..";
     QVector<uint> votesIndex;
     QVector<uint> votes;
-    votesIndex.resize(17770); // hardcoded so totalMovies() doesn't need a branch
+    votesIndex.resize(123344); // hardcoded so totalMovies() doesn't need a branch
     qFill(votesIndex.begin(), votesIndex.end(), 0);
     int percentDone = 0;
     uint c = 0;
-    votesIndex[0] = 0;
-    for (int i = 1; i < votesIndex.size() + 1; ++i) {
-        QString fileName = QString(rootPath() + "/training_set/mv_%1.txt").arg(i, 7, 10, QChar('0'));
+    {
+        int i = 0;
+        int currentMovie = -1;
+        QString fileName = QString(rootPath() + "/download/data_normalized.txt");
         QFile data(fileName);
         QVector<int> currentVotes;
         if (data.open(QFile::ReadOnly)) {
             QTextStream in(&data);
             while (!in.atEnd()) {
                 QString line = in.readLine();
-                int x = line.lastIndexOf(",") - 1;
-                //QString date = line.right(line.length() - x - 1);
-                uint vote = line.mid(x, 1).toInt();
-                uint user = line.mid(0, line.lastIndexOf(",") - 2).toInt();
+                int x = line.lastIndexOf(":");
+                int movie = line.mid(0, x).toInt() - 1;
+                uint vote = 5;
+                uint user = line.mid(x + 1).toInt();
+                Q_ASSERT(line == QString("%1:%2").arg(movie + 1).arg(user));
+                if (movie != currentMovie) {
+                    if (currentMovie != -1)
+                        for (int k = currentMovie + 1; k < movie; ++k)
+                            votesIndex[k] = c;
+                    qSort(currentVotes.begin(), currentVotes.end(), userlessthan);
+                    for (int j = 0; j < currentVotes.size(); ++j)
+                        votes.append(currentVotes.at(j));
+                    currentVotes.clear();
+                    currentMovie = movie;
+                    votesIndex[currentMovie] = c;
+                    int t = i / (123344 / 100);
+                    if (t != percentDone && t % 5 == 0) {
+                        percentDone = t;
+                        qDebug() << fileName << percentDone << "%" << i << c;
+                    }
+                    ++i;
+                }
+
                 if (x != -2 && user <= 0) {
                     qWarning() << "warning: found a user with id 0";
                     continue;
                 }
 
-                if (x != -2) {
-                    currentVotes.append((vote << 29) | user);
-                    ++c;
-                }
+                currentVotes.append((vote << 29) | user);
+                ++c;
             }
         } else {
             qWarning() << fileName << "doesn't exist!";
             return;
         }
+        // final
         qSort(currentVotes.begin(), currentVotes.end(), userlessthan);
         for (int j = 0; j < currentVotes.size(); ++j)
             votes.append(currentVotes.at(j));
-        if (i != 17770) {
-            votesIndex[i] = c;
-        } else {
-            //qDebug() << i << c << votes.count();
-        }
-        int t = i / (17770 / 100);
-        if (t != percentDone && t % 5 == 0) {
-            percentDone = t;
-            qDebug() << fileName << percentDone << "%" << i << c;
-        }
     }
     qDebug() << "Generated movie database.  Saving...";
     saveDatabase(votes, rootPath() + "/" + MOVIESFILENAME + ".data");
@@ -187,7 +196,7 @@ void DataBase::generateUserDatabase()
         if (i % (totalMovies() / 100) == 0 && t % 5 == 0)
             qDebug() << t << "%";
     }
-    qDebug() << "finshed initial sorting, sorting and saving...";
+    qDebug() << "finished initial sorting, sorting and saving...";
 
     QMapIterator<int, QVector<uint> > i(users);
     QVector<uint> userIndex;
@@ -254,6 +263,7 @@ bool DataBase::load()
     moviesFile = new QFile(movieFileName);
     bool moviesFileError = ::load(moviesFile, &storedmovies);
     // Basic sanity check
+    /*
     if (!moviesFileError && (storedmovies[0] != 0 || (storedmovies[1] != 547 && storedmovies[1] != 524))) {
         qWarning() << "Movie database error, possibly corrupt.  Expected [0] to be 0, but it is:"
         << storedmovies[0] << "or expected [1] to be 547/524, but it is:" << storedmovies[1];
@@ -264,11 +274,12 @@ bool DataBase::load()
         delete moviesFile;
         moviesFile = 0;
         return false;
-    }
+    }*/
 
     votesFile = new QFile(rootPath() + "/" + MOVIESFILENAME + ".data");
     bool votesFileError = ::load(votesFile, &storedvotes);
     m_totalVotes  = votesFile->size() / 4;
+    /*
     // Basic sanity check
     Movie m(this, 1);
     if (!votesFileError && (m.votes() != 547 && m.votes() != 524)) {
@@ -280,7 +291,7 @@ bool DataBase::load()
         qWarning() << "votes database error, needs updating or possibly corrupt.  Expect movie" << m.id() << "to have rank of 3:" << m.findScore(1488844) << "for user 1488844.";
         munmap(storedvotes, votesFile->size());
         votesFileError = true;
-    }
+    }*/
     if (votesFileError) {
         delete votesFile;
         votesFile = 0;
@@ -309,6 +320,7 @@ bool DataBase::load()
     for (int i = 0; i < totalUsers(); ++i) {
         users.insert(storedUsersIndex[i], i);
     }
+    /*
     // Basic sanity check that the database is ok and as we expect it to be
     User user(this, 6);
     if ((user.votes() != 626 && user.votes() != 623) || user.movie(0) != 30) {
@@ -324,7 +336,7 @@ bool DataBase::load()
         users.clear();
         return false;
     }
-
+*/
     return true;
 }
 

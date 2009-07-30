@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2006-2007 Benjamin C. Meyer (ben at meyerhome dot net)
+ * Copyright (C) 2006-2009 Benjamin C. Meyer (ben at meyerhome dot net)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -75,7 +75,7 @@ public:
     }
     inline int totalMovies() const
     {
-        return (isLoaded()) ? 17770 : 0;
+        return (isLoaded()) ? 123344 : 0;
     }
 
     // functions to pull out the vote and user

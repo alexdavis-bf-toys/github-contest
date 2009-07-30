@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2006-2007 Benjamin C. Meyer (ben at meyerhome dot net)
+ * Copyright (C) 2006-2009 Benjamin C. Meyer (ben at meyerhome dot net)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -75,6 +75,8 @@ Movie Movie::getMovie(DataBase *db, uint vote)
 
 int Movie::findVote(uint user) const
 {
+    if (m_size == 0)
+        return -1;
     int start = db->storedmovies[m_id];
     int end = start + votes() - 1;
     int r = userBinarySearch(db->storedvotes, user, start, end);
